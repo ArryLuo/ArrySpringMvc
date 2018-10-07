@@ -1,8 +1,10 @@
 package com.arryluo.control;
 
+import com.arryluo.annotation.ArryAutowired;
 import com.arryluo.annotation.ArryController;
 import com.arryluo.annotation.ArryRequestMapping;
 import com.arryluo.annotation.ArryResponseBody;
+import com.arryluo.service.UserinfoService;
 
 
 /**
@@ -11,10 +13,14 @@ import com.arryluo.annotation.ArryResponseBody;
 @ArryController
 @ArryRequestMapping("/demo")
 public class TestAction {
+
+    @ArryAutowired("UserinfoServiceImpl")
+    private UserinfoService userinfoImplmm;
     @ArryRequestMapping("/test")
     @ArryResponseBody()
     public Object show(String name){
         //进行打印
+        userinfoImplmm.show();
         return name;
     }
 

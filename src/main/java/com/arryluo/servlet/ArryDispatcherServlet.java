@@ -1,7 +1,9 @@
 package com.arryluo.servlet;
 
+import com.arryluo.annotation.ArryAutowired;
 import com.arryluo.annotation.ArryController;
 import com.arryluo.annotation.ArryRequestMapping;
+import com.arryluo.annotation.ArryService;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -11,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.*;
@@ -36,16 +39,49 @@ public class ArryDispatcherServlet extends HttpServlet {
     @Override
     public void init(ServletConfig config) throws ServletException {
         super.init(config);
+        try {
         //1.加载配置文件
         doLoadConfig(config);
         //2，扫描配置下的包
         String packageName= properties.getProperty("scanPackage");
         doScanning(packageName);
         //3，得到扫描后的文件之后，进行实例化扫描后的文件
-        doInstance();
-        //4，进行HandlerMapping,将控制层中URL,和method进行拼接
+        doInstance();//拿到实例
+        //4，进行依赖注入
+
+            doIOC();
+        //5，进行HandlerMapping,将控制层中URL,和method进行拼接
         doHandlerMapping();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
+
+    private void doIOC() throws Exception {
+        if(ioc.isEmpty()){
+            throw  new Exception("没有可以依赖注入的");
+        }
+        for (Map.Entry<String, Object> entry:ioc.entrySet()) {
+            Field[] fields = entry.getValue().getClass().getDeclaredFields();
+            // 遍历bean对象的字段
+            for (Field field : fields) {
+                   if(field.isAnnotationPresent(ArryAutowired.class)){
+                       field.setAccessible(true);
+                     /*  String name=field.getType().getSimpleName();
+                       System.out.println(name);*/
+                      String name= field.getAnnotation(ArryAutowired.class).value();
+                       // 注入实例
+                     // Object obj= ioc.get(toLowerFirstWord(name));
+                      // System.out.println(obj);
+                       field.set(entry.getValue(),ioc.get(toLowerFirstWord(name)));
+                }
+
+
+            }
+        }
+
+    }
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         this.doPost(req, resp);
@@ -77,7 +113,6 @@ public class ArryDispatcherServlet extends HttpServlet {
        Method method=  this.handlerMapping.get(url);
         //获取方法的参数列表
        Class<?extends Object>[]parameterTypes=  method.getParameterTypes();
-
        //获取请求参数
        Map<String,String[]>parameterMap=req.getParameterMap();
         //保存参数值
@@ -143,32 +178,32 @@ public class ArryDispatcherServlet extends HttpServlet {
     private void doHandlerMapping() {
         //判断ioc容器中是否有值
         try {
-        if(ioc.isEmpty()){
-            return;
-        }
-        for (Map.Entry<String, Object> entry:ioc.entrySet()) {
-           Class<?extends Object> cla= entry.getValue().getClass();
-            //判断类是否加了ArryController这个注解,加了才算是控制层
-            if(!cla.isAnnotationPresent(ArryController.class)){
-                continue;
+            if (ioc.isEmpty()) {
+                return;
             }
-            //进行拼接url
-            String baseUrl="";
-            //取出父级的url
-            if(cla.isAnnotationPresent(ArryRequestMapping.class)){
-               ArryRequestMapping arryRequestMapping= cla.getAnnotation(ArryRequestMapping.class);
-                //取出注解的值
-               baseUrl= arryRequestMapping.value();
-            }
-            //从而在取出该类下所有的方法的路径
-             Method[]methods= cla.getMethods();
-            for(Method method:methods){
-                //判断该方法是要进行请求的方法
-                if(!method.isAnnotationPresent(ArryRequestMapping.class)){
+            for (Map.Entry<String, Object> entry : ioc.entrySet()) {
+                Class<? extends Object> cla = entry.getValue().getClass();
+                //判断类是否加了ArryController这个注解,加了才算是控制层
+                if (!cla.isAnnotationPresent(ArryController.class)) {
                     continue;
                 }
-                //取出第二级路径
-               ArryRequestMapping arryRequestMapping= method.getAnnotation(ArryRequestMapping.class);
+                //进行拼接url
+                String baseUrl = "";
+                //取出父级的url
+                if (cla.isAnnotationPresent(ArryRequestMapping.class)) {
+                    ArryRequestMapping arryRequestMapping = cla.getAnnotation(ArryRequestMapping.class);
+                    //取出注解的值
+                    baseUrl = arryRequestMapping.value();
+                }
+                //从而在取出该类下所有的方法的路径
+                Method[] methods = cla.getMethods();
+                for (Method method : methods) {
+                    //判断该方法是要进行请求的方法
+                    if (!method.isAnnotationPresent(ArryRequestMapping.class)) {
+                        continue;
+                    }
+                    //取出第二级路径
+                    ArryRequestMapping arryRequestMapping = method.getAnnotation(ArryRequestMapping.class);
 
                 /* //在方法上有了这个，还要判断是否是跳转界面的还是返回值的一种处理
                 boolean isOutWrite=false;
@@ -179,16 +214,15 @@ public class ArryDispatcherServlet extends HttpServlet {
                 if(isOutWrite){
                     //
                 }*/
-               String url= arryRequestMapping.value();
-                url = (baseUrl + "/" + url).replaceAll("/+", "/");
-                handlerMapping.put(url,method);//装载方法
-                controllerMap.put(url,cla.newInstance());
+                    String url = arryRequestMapping.value();
+                    url = (baseUrl + "/" + url).replaceAll("/+", "/");
+                    handlerMapping.put(url, method);//装载方法
+                    controllerMap.put(url, entry.getValue());//再维护一个只存储controller实例的map
 
+                }
             }
         }
-        } catch (InstantiationException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
+       catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -203,9 +237,17 @@ public class ArryDispatcherServlet extends HttpServlet {
             //进行反射实例化
             try {
                Class cla= Class.forName(className);
-                Object object= cla.newInstance();//获取的实例化对象
-                //将实例化的对象放入到ioc容器中
-                ioc.put(className,object);
+               //判断下哪些可以被实例化
+                if(cla.isAnnotationPresent(ArryController.class)){
+                    Object object= cla.newInstance();//获取的实例化对象
+                    //将实例化的对象放入到ioc容器中
+                    ioc.put(toLowerFirstWord(cla.getSimpleName()),object);
+                }else if(cla.isAnnotationPresent(ArryService.class)){
+                    //userinfoImpl
+                    Object object= cla.newInstance();//获取的实例化对象
+                    ioc.put(toLowerFirstWord(cla.getSimpleName()),object);
+                }
+
             } catch (ClassNotFoundException e) {
                 e.printStackTrace();
             } catch (IllegalAccessException e) {
@@ -216,7 +258,11 @@ public class ArryDispatcherServlet extends HttpServlet {
         }
 
     }
-
+    public static String toLowerFirstWord(String simpleName) {
+        char[] charArray = simpleName.toCharArray();
+        charArray[0] += 32;
+        return String.valueOf(charArray);
+    }
     private void doScanning(String packageName) {
         //取出配置文件中要扫描的包
 
