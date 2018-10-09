@@ -1,5 +1,5 @@
 # ArrySpringMvc
-用SpringMVC手写
+手写SpringMVC
 
 # 变更历史
  1加入谷歌的json实现数据的传输<br/>
