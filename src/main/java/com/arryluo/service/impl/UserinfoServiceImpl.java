@@ -13,7 +13,7 @@ import java.util.Map;
  */
 @ArryService
 public class UserinfoServiceImpl implements UserinfoService {
-    @ArryAutowired("VideoMapper")
+    @ArryAutowired()
     private VideoMapper videoMapper;
     @Override
     public void show() {

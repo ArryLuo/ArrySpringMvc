@@ -32,9 +32,7 @@
 		<!-- 告知映射文件方式1，一个一个的配置
         <mapper resource="com/cy/mybatis/mapper/UserMapper.xml"/>-->
 		<!-- 告知映射文件方式2，自动扫描包内的Mapper接口与配置文件 -->
-		<!--<package name="com.arryluo.mapper"/>-->
-      <!--  <mapper resource="com.arryluo.mapper.VideoMapper.xml"/>-->
-      <!--  <mapper class = "com.arryluo.mapper" />-->
+
         <package name="com.arryluo.mapper"></package>
 	</mappers>
 </configuration>

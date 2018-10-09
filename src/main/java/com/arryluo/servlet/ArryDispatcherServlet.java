@@ -7,6 +7,7 @@ import com.arryluo.annotation.ArryService;
 
 import com.arryluo.c3p0.SqlFactoryUtil;
 
+import com.arryluo.util.DispatcherServletUtil;
 import org.apache.ibatis.session.SqlSession;
 
 import javax.servlet.ServletConfig;
@@ -73,12 +74,14 @@ public class ArryDispatcherServlet extends HttpServlet {
             for (Field field : fields) {
                    if(field.isAnnotationPresent(ArryAutowired.class)){
                        field.setAccessible(true);
-                       String className=field.getType().getName();
-                       System.out.println(className);
+                       //注释掉了由之前的在注解上传入的值进行获取，改成了直接通过反射获取父级的名称
+                       //String className=field.getType().getName();
+                      // System.out.println(className);
                      /*  String name=field.getType().getSimpleName();
                        System.out.println(name);*/
-                      String name= field.getAnnotation(ArryAutowired.class).value();
-                       // 注入实例
+                     // String name= field.getAnnotation(ArryAutowired.class).value();
+                       // 注入实例,
+                     String name=  DispatcherServletUtil.getFatherPath(field.getType());
                      // Object obj= ioc.get(toLowerFirstWord(name));
                        System.out.println(entry.getValue().toString());
                       Object iocobj= ioc.get(toLowerFirstWord(name));
@@ -254,20 +257,22 @@ public class ArryDispatcherServlet extends HttpServlet {
             //进行反射实例化
             try {
                Class<?extends Object> cla= Class.forName(className);
+                //获取父级名称
+                String pathName= DispatcherServletUtil.getFatherPath(cla);
                 String mybatisPack= properties.getProperty("scanmybatisPackage");
                //判断下哪些可以被实例化
                 if(cla.isAnnotationPresent(ArryController.class)){
                     Object object= cla.newInstance();//获取的实例化对象
                     //将实例化的对象放入到ioc容器中
-                    ioc.put(toLowerFirstWord(cla.getSimpleName()),object);
+                    ioc.put(toLowerFirstWord(pathName),object);
                 }else if(cla.isAnnotationPresent(ArryService.class)){
                     //userinfoImpl
                     Object object= cla.newInstance();//获取的实例化对象
-                    ioc.put(toLowerFirstWord(cla.getSimpleName()),object);
+                    ioc.put(toLowerFirstWord(pathName),object);
                 }else if(cla.getName().indexOf(mybatisPack)!=-1){
                     //这个是获取mybatis的实例的
                     Object videoMapper= sqlSession.getMapper(cla);//拿到mybatis的实例
-                    ioc.put(toLowerFirstWord(cla.getSimpleName()),videoMapper);
+                    ioc.put(toLowerFirstWord(pathName),videoMapper);
 
                 }
             } catch (ClassNotFoundException e) {

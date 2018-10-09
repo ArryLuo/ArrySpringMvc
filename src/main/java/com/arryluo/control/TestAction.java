@@ -14,7 +14,7 @@ import com.arryluo.service.UserinfoService;
 @ArryController
 @ArryRequestMapping("/demo")
 public class TestAction {
-    @ArryAutowired("UserinfoServiceImpl")
+    @ArryAutowired()
     private UserinfoService userinfoImplmm;
     @ArryRequestMapping("/test")
     @ArryResponseBody()

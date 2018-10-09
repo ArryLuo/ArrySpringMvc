@@ -17,9 +17,13 @@ import java.lang.reflect.Field;
  */
 public class EmpTexst {
     public static void main(String[] args) {
-
-
-        try {
+          Class cl=  UserinfoServiceImpl.class;
+           Class[] demo= cl.getInterfaces();
+        for (Class de:
+             demo) {
+            System.out.println(de.getSimpleName());
+        }
+           try {
             t4();
         } catch (IOException e1) {
             e1.printStackTrace();
