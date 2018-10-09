@@ -20,8 +20,8 @@ public class TestAction {
     @ArryResponseBody()
     public Object show(String name){
         //进行打印
-        System.out.println(userinfoImplmm.all());
-        return name;
+       return  userinfoImplmm.all();
+
     }
 
 }

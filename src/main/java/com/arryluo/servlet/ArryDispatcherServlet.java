@@ -8,6 +8,7 @@ import com.arryluo.annotation.ArryService;
 import com.arryluo.c3p0.SqlFactoryUtil;
 
 import com.arryluo.util.DispatcherServletUtil;
+import com.google.gson.Gson;
 import org.apache.ibatis.session.SqlSession;
 
 import javax.servlet.ServletConfig;
@@ -184,7 +185,10 @@ public class ArryDispatcherServlet extends HttpServlet {
                 return;
             }
             try {
-                resp.getWriter().write( "doTest method success! param:"+object.toString());
+                //引入json，实现对象json化
+                Gson gson=new Gson();
+               String json= gson.toJson(object);
+                resp.getWriter().write( json);//进行打印到控制台中
             } catch (IOException e) {
                 e.printStackTrace();
             }
