@@ -5,6 +5,10 @@ import com.arryluo.annotation.ArryController;
 import com.arryluo.annotation.ArryRequestMapping;
 import com.arryluo.annotation.ArryService;
 
+import com.arryluo.c3p0.SqlFactoryUtil;
+
+import org.apache.ibatis.session.SqlSession;
+
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -44,11 +48,12 @@ public class ArryDispatcherServlet extends HttpServlet {
         doLoadConfig(config);
         //2，扫描配置下的包
         String packageName= properties.getProperty("scanPackage");
-        doScanning(packageName);
+
+            doScanning(packageName);
+
         //3，得到扫描后的文件之后，进行实例化扫描后的文件
         doInstance();//拿到实例
         //4，进行依赖注入
-
             doIOC();
         //5，进行HandlerMapping,将控制层中URL,和method进行拼接
         doHandlerMapping();
@@ -56,6 +61,7 @@ public class ArryDispatcherServlet extends HttpServlet {
             e.printStackTrace();
         }
     }
+
 
     private void doIOC() throws Exception {
         if(ioc.isEmpty()){
@@ -67,15 +73,24 @@ public class ArryDispatcherServlet extends HttpServlet {
             for (Field field : fields) {
                    if(field.isAnnotationPresent(ArryAutowired.class)){
                        field.setAccessible(true);
+                       String className=field.getType().getName();
+                       System.out.println(className);
                      /*  String name=field.getType().getSimpleName();
                        System.out.println(name);*/
                       String name= field.getAnnotation(ArryAutowired.class).value();
                        // 注入实例
                      // Object obj= ioc.get(toLowerFirstWord(name));
-                      // System.out.println(obj);
-                       field.set(entry.getValue(),ioc.get(toLowerFirstWord(name)));
-                }
+                       System.out.println(entry.getValue().toString());
+                      Object iocobj= ioc.get(toLowerFirstWord(name));
+                      if(iocobj!=null){
+                          field.set(entry.getValue(),iocobj);
+                      }else{
+                          //这个就是加载mybatis的文件
 
+                      }
+
+
+                }
 
             }
         }
@@ -227,16 +242,19 @@ public class ArryDispatcherServlet extends HttpServlet {
         }
     }
 
-    private void doInstance() {
+    private void doInstance() throws IOException {
         //判断是否组装的存在数据
         if(classNames.isEmpty()){
             return;
         }
+        //初始化mybatis的信息
+       SqlSession sqlSession= SqlFactoryUtil.getSqlSession();
         //开始实例化
         for(String className:classNames){
             //进行反射实例化
             try {
-               Class cla= Class.forName(className);
+               Class<?extends Object> cla= Class.forName(className);
+                String mybatisPack= properties.getProperty("scanmybatisPackage");
                //判断下哪些可以被实例化
                 if(cla.isAnnotationPresent(ArryController.class)){
                     Object object= cla.newInstance();//获取的实例化对象
@@ -246,8 +264,12 @@ public class ArryDispatcherServlet extends HttpServlet {
                     //userinfoImpl
                     Object object= cla.newInstance();//获取的实例化对象
                     ioc.put(toLowerFirstWord(cla.getSimpleName()),object);
-                }
+                }else if(cla.getName().indexOf(mybatisPack)!=-1){
+                    //这个是获取mybatis的实例的
+                    Object videoMapper= sqlSession.getMapper(cla);//拿到mybatis的实例
+                    ioc.put(toLowerFirstWord(cla.getSimpleName()),videoMapper);
 
+                }
             } catch (ClassNotFoundException e) {
                 e.printStackTrace();
             } catch (IllegalAccessException e) {
@@ -256,8 +278,13 @@ public class ArryDispatcherServlet extends HttpServlet {
                 e.printStackTrace();
             }
         }
+        //进行sql提交
+       sqlSession.commit();
 
     }
+
+
+
     public static String toLowerFirstWord(String simpleName) {
         char[] charArray = simpleName.toCharArray();
         charArray[0] += 32;

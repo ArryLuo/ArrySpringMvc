@@ -6,6 +6,11 @@
         <element id="directory" name="classes">
           <element id="module-output" name="ArrySpringMvc" />
         </element>
+        <element id="directory" name="lib">
+          <element id="library" level="project" name="Maven: com.alibaba:druid:1.0.17" />
+          <element id="library" level="project" name="Maven: mysql:mysql-connector-java:5.1.31" />
+          <element id="library" level="project" name="Maven: org.mybatis:mybatis:3.4.1" />
+        </element>
       </element>
       <element id="directory" name="META-INF">
         <element id="file-copy" path="$PROJECT_DIR$/target/ArrySpringMvc-1.0-SNAPSHOT/META-INF/MANIFEST.MF" />
